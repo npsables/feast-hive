@@ -12,7 +12,18 @@ For more details, can check [this Feast issue](https://github.com/feast-dev/feas
 - DONE [v0.1.2] ~~Allow custom hive conf when connect to a HiveServer2~~
 - DONE [v0.14.0] ~~Support Feast 0.14.x~~
 - DONE [v0.17.0] ~~Support Feast 0.17.0~~
+- DONE [v0.26.0] ~~Support Feast 0.26.0~~
 - TODO It currently supports `insert into` for uploading entity_df, which is a little inefficient, gonna add extra parameters for people who are able to provide HDFS address in next version (for uploading to HDFS). 
+
+## Functionality Matrix
+
+| Function | Hive |
+| :-------------------------------- | :-- |
+| `get_historical_features`         | yes |
+| `pull_latest_from_table_or_query` | yes |
+| `pull_all_from_table_or_query`    | yes |
+| `offline_write_batch`             | no  |
+| `write_logged_features`           | no  |
 
 ## Quickstart
 
