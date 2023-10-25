@@ -171,7 +171,6 @@ class HiveOfflineStore(OfflineStore):
         end_date = _format_datetime(end_date)
 
         queries = [
-            "SET hive.resultset.use.unique.column.names=false",
             f"""
              SELECT {field_string}
              FROM {from_expression}
@@ -213,7 +212,6 @@ class HiveOfflineStore(OfflineStore):
         end_date = _format_datetime(end_date)
 
         queries = [
-            "SET hive.resultset.use.unique.column.names=false",
             f"""
             SELECT 
                 {field_string}
@@ -222,7 +220,7 @@ class HiveOfflineStore(OfflineStore):
                 SELECT {field_string},
                 ROW_NUMBER() OVER({partition_by_join_key_string} ORDER BY {timestamp_desc_string}) AS feast_row_
                 FROM {from_expression} t1
-                WHERE {timestamp_field} BETWEEN TIMESTAMP('{start_date}') AND TIMESTAMP('{end_date}')
+                WHERE {timestamp_field} BETWEEN ('{start_date}') AND ('{end_date}')
             ) t2
             WHERE feast_row_ = 1
             """,
@@ -293,13 +291,15 @@ class HiveOfflineStore(OfflineStore):
                     full_feature_names=full_feature_names,
                 )
 
+                print(rendered_query)
+
                 # In order to use `REGEX Column Specification`, need set `hive.support.quoted.identifiers` to None.
                 # Can study more here: https://cwiki.apache.org/confluence/display/Hive/LanguageManual+Select
                 queries = [
-                    "SET hive.mapred.mode=nonstrict",
-                    "SET hive.support.quoted.identifiers=none",
-                    "SET hive.resultset.use.unique.column.names=false",
-                    "SET hive.exec.temporary.table.storage=memory",
+                    # "SET hive.mapred.mode=nonstrict",
+                    # "SET hive.support.quoted.identifiers=none",
+                    # "SET hive.resultset.use.unique.column.names=false",
+                    # "SET hive.exec.temporary.table.storage=memory",
                 ] + rendered_query.split(";")
 
                 yield queries
@@ -370,7 +370,7 @@ class HiveRetrievalJob(RetrievalJob):
     def _to_df_internal(self, timeout=None) -> pd.DataFrame:
         return self._to_arrow_internal().to_pandas()
 
-    def _to_arrow_internal(self) -> pa.Table:
+    def _to_arrow_internal(self, timeout=None) -> pa.Table:
         with self._queries_generator() as queries:
             with self._conn.cursor() as cursor:
                 for query in queries:
@@ -461,7 +461,6 @@ def _get_entity_schema(
         entity_df_sample = HiveRetrievalJob(
             conn,
             [
-                "SET hive.resultset.use.unique.column.names=false",
                 f"SELECT * FROM ({entity_df}) AS t LIMIT 1",
             ],
         ).to_df()
@@ -496,7 +495,6 @@ def _upload_entity_df_and_get_entity_schema(
         limited_entity_df = HiveRetrievalJob(
             conn,
             [
-                "SET hive.resultset.use.unique.column.names=false",
                 f"SELECT * FROM {table_name} LIMIT 1",
             ],
         ).to_df()
@@ -636,7 +634,7 @@ MULTIPLE_FEATURE_VIEW_POINT_IN_TIME_JOIN = """
  Compute a deterministic hash for the `left_table_query_string` that will be used throughout
  all the logic as the field to GROUP BY the data
 */
-CREATE TEMPORARY TABLE entity_dataframe AS (
+CREATE VIEW entity_dataframe AS (
     SELECT *,
         {{entity_df_event_timestamp_col}} AS entity_timestamp
         {% for featureview in featureviews %}
@@ -658,7 +656,7 @@ CREATE TEMPORARY TABLE entity_dataframe AS (
 -- Start create temporary table *__base
 {% for featureview in featureviews %}
 
-CREATE TEMPORARY TABLE {{ featureview.name }}__base AS
+CREATE VIEW {{ featureview.name }}__base AS
 WITH {{ featureview.name }}__entity_dataframe AS (
     SELECT
         {{ featureview.entities | join(', ')}}{% if featureview.entities %},{% else %}{% endif %}
@@ -700,7 +698,7 @@ WITH {{ featureview.name }}__entity_dataframe AS (
     INNER JOIN (
         SELECT MAX(entity_timestamp) as max_entity_timestamp_
                {% if featureview.ttl == 0 %}{% else %}
-               ,(MIN(entity_timestamp) - interval '{{ featureview.ttl }}' second) as min_entity_timestamp_
+               ,(MIN(entity_timestamp) - interval {{ featureview.ttl }} second) as min_entity_timestamp_
                {% endif %}
         FROM entity_dataframe
     ) AS temp
@@ -719,7 +717,7 @@ FROM {{ featureview.name }}__subquery AS subquery
 INNER JOIN (
     SELECT *
     {% if featureview.ttl == 0 %}{% else %}
-    , (entity_timestamp - interval '{{ featureview.ttl }}' second) as ttl_entity_timestamp
+    , (entity_timestamp - interval {{ featureview.ttl }} second) as ttl_entity_timestamp
     {% endif %}
     FROM {{ featureview.name }}__entity_dataframe
 ) AS entity_dataframe
@@ -810,7 +808,7 @@ ON (
  The entity_dataframe dataset being our source of truth here.
  */
 
-SELECT `(entity_timestamp|{% for featureview in featureviews %}{{featureview.name}}__entity_row_unique_id{% if loop.last %}{% else %}|{% endif %}{% endfor %})?+.+`
+SELECT {{ final_output_feature_names | join(', ')}}
 FROM entity_dataframe
 {% for featureview in featureviews %}
 LEFT JOIN (
