@@ -367,7 +367,7 @@ class HiveRetrievalJob(RetrievalJob):
     def on_demand_feature_views(self) -> Optional[List[OnDemandFeatureView]]:
         return self._on_demand_feature_views
 
-    def _to_df_internal(self) -> pd.DataFrame:
+    def _to_df_internal(self, timeout=None) -> pd.DataFrame:
         return self._to_arrow_internal().to_pandas()
 
     def _to_arrow_internal(self) -> pa.Table:
