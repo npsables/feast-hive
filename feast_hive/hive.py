@@ -51,7 +51,7 @@ class HiveOfflineStoreConfig(FeastConfigBaseModel):
     host: StrictStr
     """ Host name of the HiveServer2 """
 
-    port: StrictInt = 10000
+    port: StrictInt = None
     """ Port number of HiveServer2 (default is 10000) """
 
     database: StrictStr = "default"
