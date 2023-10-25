@@ -170,6 +170,7 @@ class HiveSource(DataSource):
             name=self.name,
             type=DataSourceProto.CUSTOM_SOURCE,
             field_mapping=self.field_mapping,
+            data_source_class_type="feast_hive.hive_source.HiveSource",
             custom_options=self.hive_options.to_proto(),
             description=self.description,
             tags=self.tags,
