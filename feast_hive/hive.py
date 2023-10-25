@@ -114,14 +114,20 @@ class HiveConnection:
         assert isinstance(store_config, HiveOfflineStoreConfig)
         self._store_config = store_config
         self._real_conn = impala_connect(
-            **store_config.dict(
-                exclude={"type", "entity_uploading_chunk_size", "hive_conf"}
-            )
+            **self.real_config()
         )
 
     @property
     def real_conn(self) -> ImpalaConnection:
         return self._real_conn
+
+    def real_config(self) ->  Dict[str, Any]:
+        conf = self._store_config.dict(
+                exclude={"type", "entity_uploading_chunk_size", "hive_conf"}
+            )
+        if conf.get('port', None) is None:
+            del conf['port']
+        return conf
 
     def close(self) -> None:
         self.real_conn.close()
