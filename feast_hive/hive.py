@@ -291,8 +291,6 @@ class HiveOfflineStore(OfflineStore):
                     full_feature_names=full_feature_names,
                 )
 
-                print(rendered_query)
-
                 # In order to use `REGEX Column Specification`, need set `hive.support.quoted.identifiers` to None.
                 # Can study more here: https://cwiki.apache.org/confluence/display/Hive/LanguageManual+Select
                 queries = [
