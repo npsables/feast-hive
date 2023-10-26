@@ -634,7 +634,7 @@ MULTIPLE_FEATURE_VIEW_POINT_IN_TIME_JOIN = """
  Compute a deterministic hash for the `left_table_query_string` that will be used throughout
  all the logic as the field to GROUP BY the data
 */
-CREATE VIEW entity_dataframe AS (
+WITH entity_dataframe AS (
     SELECT *,
         {{entity_df_event_timestamp_col}} AS entity_timestamp
         {% for featureview in featureviews %}
@@ -650,14 +650,13 @@ CREATE VIEW entity_dataframe AS (
             {% endif %}
         {% endfor %}
     FROM {{ left_table_query_string }}
-);
+),
 
 
 -- Start create temporary table *__base
 {% for featureview in featureviews %}
 
-CREATE VIEW {{ featureview.name }}__base AS
-WITH {{ featureview.name }}__entity_dataframe AS (
+{{ featureview.name }}__entity_dataframe AS (
     SELECT
         {{ featureview.entities | join(', ')}}{% if featureview.entities %},{% else %}{% endif %}
         entity_timestamp,
@@ -708,8 +707,10 @@ WITH {{ featureview.name }}__entity_dataframe AS (
         AND {{ featureview.timestamp_field }} >=  min_entity_timestamp_
         {% endif %}
     )
-)
-SELECT
+),
+
+{{ featureview.name }}__base AS (
+    SELECT
     subquery.*,
     entity_dataframe.entity_timestamp,
     entity_dataframe.{{featureview.name}}__entity_row_unique_id
@@ -731,7 +732,11 @@ ON (
     {% for entity in featureview.entities %}
     AND subquery.{{ entity }} = entity_dataframe.{{ entity }}
     {% endfor %}
-);
+    )
+),
+
+
+
 
 {% endfor %}
 -- End create temporary table *__base
@@ -739,7 +744,6 @@ ON (
 
 {% for featureview in featureviews %}
 
-{% if loop.first %}WITH{% endif %}
 
 /*
  2. If the `created_timestamp_column` has been set, we need to
