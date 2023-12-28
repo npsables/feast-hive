@@ -1,4 +1,4 @@
->  Modified to work with Impala. Need to confirm point-in-time join logics.
+>  Modified to work with Impala. Point-in-time join logic is the same with Spark Offline Store but different with File Store. Hello? :/
 
 
 # Feast Hive Support
